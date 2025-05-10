@@ -6,7 +6,7 @@ import random
 from datetime import datetime
 
 # ======================== CONFIG ========================
-API_KEY = st.secrets["FINNHUB_API_KEY"] if "FINNHUB_API_KEY" in st.secrets else "your_fallback_key_here"
+API_KEY = st.secrets["FINNHUB_API_KEY"] if "d0fhdbhr01qsv9ehhli0d0fhdbhr01qsv9ehhlig" in st.secrets else "your_fallback_key_here"
 SYMBOLS = ["TSLA", "AAPL", "META", "AMZN", "MSFT", "AMD", "NVDA", "NFLX"]
 REFRESH_INTERVAL = 60  # seconds
 
