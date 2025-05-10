@@ -1,6 +1,7 @@
 import streamlit as st
 import requests
 import pandas as pd
+import os
 
 # ========== CONFIG ==========
 API_KEY = os.getenv("FINNHUB_API_KEY") or "d0fhdhbr01qsy9ehhli0d0fhdhbr01qsy9ehhlig"
