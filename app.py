@@ -9,14 +9,14 @@ import os
 API_KEY = os.getenv("FINNHUB_API_KEY") or "d0fhdbhr01qsv9ehhli0d0fhdbhr01qsv9ehhlig"
 SYMBOLS = ["ASTR", "CDNA", "QOCX", "APP", "AFRM", "RAMP", "DUOL"]
 
-st.set_page_config(page_title="Gap Scanner", layout="wide")
-st.title("🚀 Warrior-Style Gap Scanner")
+st.set_page_config(page_title="Warrior-Style Dashboard", layout="wide")
 
-# ======== OPTIONS =========
+# ======== SIDEBAR MENU =========
+tab = st.sidebar.radio("📌 Select View", ["📊 Gap Scanner", "📰 News Room"])
 use_fake = st.sidebar.toggle("✨ Enable Fake Test Mode", value=False)
 auto_refresh = st.sidebar.checkbox("🔁 Refreshing in 60 seconds...", value=True)
 
-# ======== UTILS =========
+# ======== UTILITIES =========
 def null_guard(val, is_float=False):
     return round(val, 2) if isinstance(val, (int, float)) and val != 0 else "--" if is_float else "--"
 
@@ -26,7 +26,7 @@ def format_news_tooltip(news):
     short = news[:57] + "..." if len(news) > 60 else news
     return f'<span title="{news}">{short}</span>'
 
-# ======== MOCK TEST DATA =========
+# ======== MOCK DATA =========
 def get_fake_data():
     return [
         {
@@ -45,7 +45,7 @@ def get_fake_data():
         for symbol in SYMBOLS
     ]
 
-# ======== REAL DATA FETCHER =========
+# ======== LIVE DATA =========
 def fetch_real_data(symbol):
     base_url = "https://finnhub.io/api/v1/"
     try:
@@ -59,7 +59,7 @@ def fetch_real_data(symbol):
         gap = ((open_price - prev_close) / prev_close * 100) if prev_close else 0
         change = ((current - prev_close) / prev_close * 100) if prev_close else 0
 
-        # Get latest headline
+        # Get latest news
         if news and isinstance(news, list) and len(news) > 0:
             headline = news[0].get("headline", "")
             ts = news[0].get("datetime", 0)
@@ -75,30 +75,50 @@ def fetch_real_data(symbol):
             "Volume": null_guard(stats.get("metric", {}).get("volume")),
             "Float (M)": null_guard(stats.get("metric", {}).get("sharesFloat") / 1_000_000 if stats.get("metric", {}).get("sharesFloat") else 0, True),
             "Relative Vol (Daily Rate)": null_guard(stats.get("metric", {}).get("10DayAverageTradingVolume")),
-            "Relative Vol (5 Min %)": null_guard(stats.get("metric", {}).get("52WeekHigh")),  # Placeholder
+            "Relative Vol (5 Min %)": null_guard(stats.get("metric", {}).get("52WeekHigh")),
             "Change From Close (%)": round(change, 2),
             "Short Interest": null_guard(stats.get("metric", {}).get("shortInterest")),
             "Short Ratio": null_guard(stats.get("metric", {}).get("shortRatio"), True),
             "News": format_news_tooltip(news_text)
         }
-    except Exception as e:
+    except:
         return None
 
-# ======== GET DATA =========
-data = get_fake_data() if use_fake else list(filter(None, [fetch_real_data(s) for s in SYMBOLS]))
+# ======== MAIN: GAP SCANNER =========
+if tab == "📊 Gap Scanner":
+    st.title("🚀 Warrior-Style Gap Scanner")
+    data = get_fake_data() if use_fake else list(filter(None, [fetch_real_data(s) for s in SYMBOLS]))
+    if data:
+        df = pd.DataFrame(data)
+        df = df.sort_values(by="Gap %", ascending=False).reset_index(drop=True)
+        st.markdown(f"🕒 Last Updated: {time.strftime('%Y-%m-%d %H:%M:%S')} (auto-refresh every 60s)")
+        st.markdown("<style>table td span {cursor: help;}</style>", unsafe_allow_html=True)
+        st.write(df.to_html(escape=False, index=False), unsafe_allow_html=True)
+    else:
+        st.warning("No data to show. Check tickers or API usage.")
 
-# ======== DISPLAY =========
-if data:
-    df = pd.DataFrame(data)
-    df = df.sort_values(by="Gap %", ascending=False).reset_index(drop=True)
+# ======== MAIN: NEWS ROOM =========
+elif tab == "📰 News Room":
+    st.title("📰 Warrior-Style News Room")
+    for symbol in SYMBOLS:
+        url = f"https://finnhub.io/api/v1/company-news?symbol={symbol}&from=2024-01-01&to=2025-12-31&token={API_KEY}"
+        try:
+            res = requests.get(url)
+            news_items = res.json()[:3]  # Top 3 headlines
+        except:
+            news_items = []
 
-    st.markdown(f"🕒 Last Updated: {time.strftime('%Y-%m-%d %H:%M:%S')} (auto-refresh every 60s)")
-    st.markdown("<style>table td span {cursor: help;}</style>", unsafe_allow_html=True)
-    st.write(df.to_html(escape=False, index=False), unsafe_allow_html=True)
-else:
-    st.warning("No data to show. Check tickers or API usage.")
+        st.subheader(f"🔗 {symbol} — [Chart](https://www.tradingview.com/symbols/{symbol}/)")
+        if not news_items:
+            st.info("No recent news.")
+            continue
 
-# ======== AUTO REFRESH =========
+        for item in news_items:
+            ts = item.get("datetime", 0)
+            news_time = time.strftime('%H:%M', time.localtime(ts))
+            st.markdown(f"• **[{news_time}]** {item.get('headline', '')}")
+
+# ======== REFRESH =========
 if auto_refresh:
     time.sleep(60)
     st.rerun()
