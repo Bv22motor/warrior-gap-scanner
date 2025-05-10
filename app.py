@@ -4,6 +4,7 @@ import pandas as pd
 import time
 import random
 import os
+from datetime import datetime, timedelta
 
 # ======== CONFIG =========
 API_KEY = os.getenv("FINNHUB_API_KEY") or "d0fhdbhr01qsv9ehhli0d0fhdbhr01qsv9ehhlig"
@@ -15,6 +16,23 @@ st.title("🚀 Warrior-Style Gap Scanner")
 # ======== OPTIONS =========
 use_fake = st.sidebar.toggle("✨ Enable Fake Test Mode", value=False)
 auto_refresh = st.sidebar.checkbox("🔁 Refreshing in 60 seconds...", value=True)
+
+# ======== REAL NEWS FETCHER =========
+def fetch_latest_news(symbol, api_key):
+    today = datetime.now().date()
+    yesterday = today - timedelta(days=1)
+    url = f"https://finnhub.io/api/v1/company-news?symbol={symbol}&from={yesterday}&to={today}&token={api_key}"
+    try:
+        response = requests.get(url)
+        if response.status_code == 200:
+            news_items = response.json()
+            if news_items:
+                latest_news = news_items[0]
+                timestamp = datetime.fromtimestamp(latest_news['datetime']).strftime('%H:%M')
+                return f"[{timestamp}] {latest_news['headline']}"
+    except:
+        pass
+    return "No recent news"
 
 # ======== MOCK TEST DATA =========
 def get_fake_data():
@@ -48,6 +66,7 @@ def fetch_real_data(symbol):
 
         gap = ((open_price - prev_close) / prev_close * 100) if prev_close else 0
         change = ((current - prev_close) / prev_close * 100) if prev_close else 0
+        news = fetch_latest_news(symbol, API_KEY)
 
         return {
             "Gap %": round(gap, 2),
@@ -60,7 +79,7 @@ def fetch_real_data(symbol):
             "Change From Close (%)": round(change, 2),
             "Short Interest": int(stats.get("metric", {}).get("shortInterest", 0)),
             "Short Ratio": round(stats.get("metric", {}).get("shortRatio", 0), 2),
-            "News": f"[{time.strftime('%H:%M')}] {symbol} sees strong premarket movement."  # Placeholder news
+            "News": news
         }
     except:
         return None
