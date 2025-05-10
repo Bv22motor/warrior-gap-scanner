@@ -1,91 +1,82 @@
 import streamlit as st
+import requests
 import pandas as pd
-from datetime import datetime
 import time
+import random
+import os
 
-# ======= FAKE TEST MODE =======
-st.set_page_config(page_title="Top Gappers Scanner", layout="wide")
-st.sidebar.markdown("🧪 **Enable Fake Test Mode**")
-use_fake = st.sidebar.toggle("Enable Fake Test Mode", value=False)
+# ======== CONFIG =========
+API_KEY = os.getenv("FINNHUB_API_KEY") or "YOUR_FINNHUB_API_KEY"
+SYMBOLS = ["ASTR", "CDNA", "QOCX", "APP", "AFRM", "RAMP", "DUOL"]  # Manual ticker list
 
-# ======= SIMULATED DATA =======
+st.set_page_config(page_title="Gap Scanner", layout="wide")
+st.title("🚀 Warrior-Style Gap Scanner")
+
+# ======== OPTIONS =========
+use_fake = st.sidebar.toggle("✨ Enable Fake Test Mode", value=False)
+auto_refresh = st.sidebar.checkbox("🔁 Refreshing in 60 seconds...", value=True)
+
+# ======== MOCK TEST DATA =========
 def get_fake_data():
     return [
         {
-            "Symbol": "ASTR", "Price": 2.5, "Volume": 8180000, "Float": 15.74,
-            "Relative Vol (Daily Rate)": 2876.08, "Relative Vol (5 Min %)": 500720.16,
-            "Change From Close (%)": 83.78, "Short Interest": 1830000, "Short Ratio": 3.48,
-            "Prev Close": 1.36
-        },
-        {
-            "Symbol": "CDNA", "Price": 70.68, "Volume": 2145000, "Float": 213.03,
-            "Relative Vol (Daily Rate)": 0.48, "Relative Vol (5 Min %)": 29.13,
-            "Change From Close (%)": 26.46, "Short Interest": 0, "Short Ratio": 0.0,
-            "Prev Close": 55.9
-        },
-        {
-            "Symbol": "QOCX", "Price": 1.36, "Volume": 10779000, "Float": 59.76,
-            "Relative Vol (Daily Rate)": 140.7, "Relative Vol (5 Min %)": 6215.56,
-            "Change From Close (%)": 14.51, "Short Interest": 1980000, "Short Ratio": 1.28,
-            "Prev Close": 1.19
-        },
-        {
-            "Symbol": "APP", "Price": 45.45, "Volume": 84550000, "Float": 183.98,
-            "Relative Vol (Daily Rate)": 20.28, "Relative Vol (5 Min %)": 1943.8,
-            "Change From Close (%)": 13.29, "Short Interest": 17480000, "Short Ratio": 8.97,
-            "Prev Close": 40.14
-        },
-        {
-            "Symbol": "AFRM", "Price": 24.65, "Volume": 56714000, "Float": 220.94,
-            "Relative Vol (Daily Rate)": 4.09, "Relative Vol (5 Min %)": 415.51,
-            "Change From Close (%)": 13.08, "Short Interest": 44590000, "Short Ratio": 3.52,
-            "Prev Close": 21.81
-        },
-        {
-            "Symbol": "RAMP", "Price": 33.91, "Volume": 5700000, "Float": 64.25,
-            "Relative Vol (Daily Rate)": 237.5, "Relative Vol (5 Min %)": 686666.67,
-            "Change From Close (%)": 12.37, "Short Interest": 1260000, "Short Ratio": 3.52,
-            "Prev Close": 30.17
-        },
-        {
-            "Symbol": "DUOL", "Price": 185.99, "Volume": 13670000, "Float": 37.39,
-            "Relative Vol (Daily Rate)": 14.93, "Relative Vol (5 Min %)": 3044.47,
-            "Change From Close (%)": 11.19, "Short Interest": 2360000, "Short Ratio": 4.11,
-            "Prev Close": 167.27
-        },
+            "Gap %": round(random.uniform(10, 90), 2),
+            "Symbol": symbol,
+            "Price": round(random.uniform(1, 300), 2),
+            "Volume": random.randint(1_000_000, 90_000_000),
+            "Float (M)": round(random.uniform(10, 300), 2),
+            "Relative Vol (Daily Rate)": round(random.uniform(1, 3000), 2),
+            "Relative Vol (5 Min %)": round(random.uniform(1, 900_000), 2),
+            "Change From Close (%)": round(random.uniform(1, 80), 2),
+            "Short Interest": random.randint(0, 50_000_000),
+            "Short Ratio": round(random.uniform(0.1, 20), 2)
+        }
+        for symbol in SYMBOLS
     ]
 
-# ======= DATA HANDLING =======
-data = get_fake_data() if use_fake else []
+# ======== REAL DATA FETCHER =========
+def fetch_real_data(symbol):
+    base_url = f"https://finnhub.io/api/v1/"
+    try:
+        quote = requests.get(f"{base_url}quote?symbol={symbol}&token={API_KEY}").json()
+        profile = requests.get(f"{base_url}stock/profile2?symbol={symbol}&token={API_KEY}").json()
+        stats = requests.get(f"{base_url}stock/metric?symbol={symbol}&metric=all&token={API_KEY}").json()
 
+        prev_close = quote.get("pc", 0)
+        open_price = quote.get("o", 0)
+        current = quote.get("c", 0)
+
+        gap = ((open_price - prev_close) / prev_close * 100) if prev_close else 0
+        change = ((current - prev_close) / prev_close * 100) if prev_close else 0
+
+        return {
+            "Gap %": round(gap, 2),
+            "Symbol": symbol,
+            "Price": round(current, 2),
+            "Volume": stats.get("metric", {}).get("volume", 0),
+            "Float (M)": round(stats.get("metric", {}).get("sharesFloat", 0) / 1_000_000, 2),
+            "Relative Vol (Daily Rate)": round(stats.get("metric", {}).get("10DayAverageTradingVolume", 0), 2),
+            "Relative Vol (5 Min %)": round(stats.get("metric", {}).get("52WeekHigh", 0), 2),  # Placeholder
+            "Change From Close (%)": round(change, 2),
+            "Short Interest": int(stats.get("metric", {}).get("shortInterest", 0)),
+            "Short Ratio": round(stats.get("metric", {}).get("shortRatio", 0), 2)
+        }
+    except:
+        return None
+
+# ======== GET DATA =========
+data = get_fake_data() if use_fake else list(filter(None, [fetch_real_data(s) for s in SYMBOLS]))
+
+# ======== DISPLAY =========
 if data:
     df = pd.DataFrame(data)
-
-    # Calculate Gap %
-    df["Gap %"] = ((df["Price"] - df["Prev Close"]) / df["Prev Close"]) * 100
-    df["Gap %"] = df["Gap %"].round(2)
-
-    # Reorder columns so Gap % comes first
-    cols = ["Gap %"] + [col for col in df.columns if col != "Gap %"]
-    df = df[cols]
-
-    # Sort by Gap % descending
     df = df.sort_values(by="Gap %", ascending=False).reset_index(drop=True)
-
-    # Remove internal 'Prev Close' column if not needed in view
-    df.drop(columns=["Prev Close"], inplace=True)
-
-# ======= UI DISPLAY =======
-st.markdown("## 🚀 Warrior-Style Gap Scanner")
-st.markdown(f"⏰ Last Updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} (auto-refresh every 60s)")
-st.markdown("---")
-
-if data:
+    st.markdown(f"🕒 Last Updated: {time.strftime('%Y-%m-%d %H:%M:%S')} (auto-refresh every 60s)")
     st.dataframe(df, use_container_width=True)
 else:
-    st.warning("No data available. Please enable Fake Test Mode.")
+    st.warning("No data to show. Check tickers or API usage.")
 
-# ======= AUTO REFRESH =======
-st.experimental_rerun = lambda: None  # override to silence warnings
-time.sleep(60)
-st.experimental_rerun()
+# ======== AUTO REFRESH =========
+if auto_refresh:
+    time.sleep(60)
+    st.rerun()
