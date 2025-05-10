@@ -74,7 +74,15 @@ else:
     st.warning("No data available. Check ticker symbols or wait for market hours.")
 
 # === Countdown auto-refresh ===
+import streamlit.runtime.scriptrunner.script_run_context as context
+import threading
+
+def rerun():
+    ctx = context.get_script_run_ctx()
+    threading.Thread(target=lambda: st._runtime._rerun(ctx)).start()
+
 for i in range(REFRESH_INTERVAL, 0, -1):
     countdown.markdown(f"🔁 Refreshing in **{i} seconds**...")
     time.sleep(1)
-    st.experimental_rerun()
+
+rerun()
