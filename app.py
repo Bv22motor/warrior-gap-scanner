@@ -4,6 +4,8 @@ import pandas as pd
 import time
 from datetime import datetime
 
+st.set_page_config(page_title="Gap Scanner", layout="wide")
+
 # ========== CONFIG ==========
 API_KEY = st.secrets["FINNHUB_API_KEY"] if "d0fhdbhr01qsv9ehhli0d0fhdbhr01qsv9ehhlig" in st.secrets else "YOUR_BACKUP_API_KEY_HERE"
 
@@ -11,7 +13,7 @@ SYMBOLS = ["TSLA", "AAPL", "META", "AMZN", "MSFT", "AMD", "NVDA", "NFLX"]
 FAKE_MODE = st.sidebar.toggle("🚀 Enable Fake Test Mode", value=False)
 REFRESH_INTERVAL = 60
 
-st.set_page_config(page_title="Gap Scanner", layout="wide")
+
 st.title("🚀 Warrior-Style Gap Scanner")
 
 # ========== FETCH FUNCTIONS ==========
