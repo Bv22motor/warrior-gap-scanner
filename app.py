@@ -6,7 +6,7 @@ import random
 import os
 
 # ======== CONFIG =========
-API_KEY = os.getenv("FINNHUB_API_KEY") or "YOUR_FINNHUB_API_KEY"
+API_KEY = os.getenv("FINNHUB_API_KEY") or "d0fhdbhr01qsv9ehhli0d0fhdbhr01qsv9ehhlig"
 SYMBOLS = ["ASTR", "CDNA", "QOCX", "APP", "AFRM", "RAMP", "DUOL"]  # Manual ticker list
 
 st.set_page_config(page_title="Gap Scanner", layout="wide")
