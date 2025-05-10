@@ -5,10 +5,10 @@ import time
 
 # === CONFIG ===
 API_KEY = os.getenv("FINNHUB_API_KEY") or "d0fhdbhr01qsv9ehhli0d0fhdbhr01qsv9ehhlig"
-SYMBOLS = ["ASTR", "CDNA", "QOCX", "APP", "AFRM", "RAMP", "DUOL"]  # Can edit anytime
+SYMBOLS = ["ASTR", "CDNA", "QOCX", "APP", "AFRM", "RAMP", "DUOL"]  # You can edit this list anytime
 
-st.set_page_config(page_title="📰 News Room", layout="wide")
-st.title("🗞️ Warrior-Style News Room (Clickable Tickers)")
+st.set_page_config(page_title="News Room", layout="wide")
+st.title("📰 Warrior-Style News Room (Clickable Tickers)")
 
 # === FETCH NEWS FOR SYMBOL ===
 def fetch_news(symbol):
@@ -22,11 +22,13 @@ def fetch_news(symbol):
 
 # === DISPLAY ===
 for sym in SYMBOLS:
-    st.subheader(f"📌 {sym} — [View Chart](https://www.tradingview.com/symbols/{sym}/)")
+    st.subheader(f"📈 {sym} — [View Chart](https://www.tradingview.com/symbols/{sym}/)")
+
     news = fetch_news(sym)
-    
+
     if not news:
         st.info("No recent news.")
+        st.markdown("---")
         continue
 
     for item in news:
@@ -36,4 +38,3 @@ for sym in SYMBOLS:
         st.markdown(f"- 🕒 **{datetime}** — [{headline}]({url})")
 
     st.markdown("---")
-
