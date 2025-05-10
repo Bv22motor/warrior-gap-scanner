@@ -6,7 +6,7 @@ import os
 # ========== CONFIG ==========
 API_KEY = os.getenv("FINNHUB_API_KEY") or "d0fhdhbr01qsy9ehhli0d0fhdhbr01qsy9ehhlig"
 
-SYMBOLS = ["AAPL", "TSLA", "AMZN", "NVDA", "MSFT", "META", "AMD", "NFLX"]  # Add more tickers here
+SYMBOLS = ["NVDA", "META", "MSFT", "AMD", "NFLX", "GME", "SPY"]
 
 st.set_page_config(page_title="Gap Scanner", layout="wide")
 st.title("🚀 Warrior-Style Gap Scanner")
