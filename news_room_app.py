@@ -4,8 +4,8 @@ import os
 import time
 
 # === CONFIG ===
-API_KEY = os.getenv("FINNHUB_API_KEY") or "d0fhdbhr01qsv9ehhli0d0fhdbhr01qsv9ehhlig"
-SYMBOLS = ["ASTR", "CDNA", "QOCX", "APP", "AFRM", "RAMP", "DUOL"]  # You can edit this list anytime
+API_KEY = os.getenv("FINNHUB_API_KEY") or "your_finnhub_api_key"
+SYMBOLS = ["ASTR", "CDNA", "QOCX", "APP", "AFRM", "RAMP", "DUOL"]
 
 st.set_page_config(page_title="News Room", layout="wide")
 st.title("📰 Warrior-Style News Room (Clickable Tickers)")
@@ -15,26 +15,20 @@ def fetch_news(symbol):
     url = f"https://finnhub.io/api/v1/company-news?symbol={symbol}&from=2024-01-01&to={time.strftime('%Y-%m-%d')}&token={API_KEY}"
     try:
         res = requests.get(url)
-        news_data = res.json()
-        return news_data[:3]  # Show top 3
-    except Exception as e:
+        news = res.json()
+        return news[:3]  # return top 3 only
+    except:
         return []
 
 # === DISPLAY ===
 for sym in SYMBOLS:
-    st.subheader(f"📈 {sym} — [View Chart](https://www.tradingview.com/symbols/{sym}/)")
+    st.subheader(f"📌 {sym} — [Chart](https://www.tradingview.com/symbols/{sym}/)")
+    news_list = fetch_news(sym)
 
-    news = fetch_news(sym)
-
-    if not news:
-        st.info("No recent news.")
-        st.markdown("---")
+    if not news_list:
+        st.info("📭 No recent news found for this symbol.")
         continue
 
-    for item in news:
-        headline = item.get("headline", "")
-        datetime = time.strftime('%Y-%m-%d %H:%M', time.localtime(item.get("datetime", 0)))
-        url = item.get("url", "")
-        st.markdown(f"- 🕒 **{datetime}** — [{headline}]({url})")
-
-    st.markdown("---")
+    for item in news_list:
+        timestamp = time.strftime('%H:%M', time.localtime(item.get("datetime", 0)))
+        st.markdown(f"**[{timestamp}]** {item.get('headline', '')}")
