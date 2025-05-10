@@ -34,6 +34,9 @@ for symbol in SYMBOLS:
     })
 
 df = pd.DataFrame(data)
-df = df.sort_values(by="Gap %", ascending=False).reset_index(drop=True)
 
-st.dataframe(df, use_container_width=True)
+if not df.empty:
+    df = df.sort_values(by="Gap %", ascending=False).reset_index(drop=True)
+    st.dataframe(df, use_container_width=True)
+else:
+    st.warning("No data available. Check ticker symbols or wait for market hours.")
