@@ -20,7 +20,7 @@ data = []
 
 for symbol in SYMBOLS:
     quote = get_quote(symbol)
-    if quote["pc"] == 0:
+    if "pc" not in quote or quote["pc"] == 0:
         continue
     gap_pct = ((quote["o"] - quote["pc"]) / quote["pc"]) * 100
     change_pct = ((quote["c"] - quote["pc"]) / quote["pc"]) * 100
