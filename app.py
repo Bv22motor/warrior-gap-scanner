@@ -81,5 +81,6 @@ for i in range(REFRESH_INTERVAL, 0, -1):
     countdown.markdown(f"🔁 Refreshing in **{i} seconds**...")
     time.sleep(1)
 
-st.experimental_rerun()
+st.rerun()
+
 
