@@ -1,81 +1,83 @@
 import streamlit as st
-import requests
 import pandas as pd
+import requests
 import time
+import random
 from datetime import datetime
 
+# ======================== CONFIG ========================
+API_KEY = st.secrets["FINNHUB_API_KEY"] if "FINNHUB_API_KEY" in st.secrets else "your_fallback_key_here"
+SYMBOLS = ["TSLA", "AAPL", "META", "AMZN", "MSFT", "AMD", "NVDA", "NFLX"]
+REFRESH_INTERVAL = 60  # seconds
+
+# ================ PAGE CONFIG =================
 st.set_page_config(page_title="Gap Scanner", layout="wide")
 
-# ========== CONFIG ==========
-API_KEY = st.secrets["FINNHUB_API_KEY"] if "d0fhdbhr01qsv9ehhli0d0fhdbhr01qsv9ehhlig" in st.secrets else "YOUR_BACKUP_API_KEY_HERE"
-
-SYMBOLS = ["TSLA", "AAPL", "META", "AMZN", "MSFT", "AMD", "NVDA", "NFLX"]
-FAKE_MODE = st.sidebar.toggle("🚀 Enable Fake Test Mode", value=False)
-REFRESH_INTERVAL = 60
-
-
+# ================== UI ======================
 st.title("🚀 Warrior-Style Gap Scanner")
+fake_mode = st.sidebar.toggle("Enable Fake Test Mode")
 
-# ========== FETCH FUNCTIONS ==========
+st.caption(f"🕒 Last Updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} (auto-refresh every {REFRESH_INTERVAL}s)")
+
+# =================== FUNCTIONS ======================
 def get_quote(symbol):
     url = f"https://finnhub.io/api/v1/quote?symbol={symbol}&token={API_KEY}"
     r = requests.get(url)
-    return r.json()
+    return r.json() if r.status_code == 200 else {}
 
-def get_metrics(symbol):
+def get_float(symbol):
+    url = f"https://finnhub.io/api/v1/stock/profile2?symbol={symbol}&token={API_KEY}"
+    r = requests.get(url)
+    return r.json().get("shareOutstanding", 0)
+
+def get_volume(symbol):
     url = f"https://finnhub.io/api/v1/stock/metric?symbol={symbol}&metric=all&token={API_KEY}"
     r = requests.get(url)
-    return r.json().get("metric", {})
+    return r.json().get("metric", {}).get("10DayAverageTradingVolume", 0)
 
-# ========== MAIN TABLE BUILD ==========
+# ==================== DATA =======================
 data = []
 
 for symbol in SYMBOLS:
-    if FAKE_MODE:
-        quote = {"c": 104, "o": 104, "pc": 109}
-        metrics = {
-            "sharesFloat": 200_000_000,
-            "10DayAverageTradingVolume": 50_000_000,
-            "shortPercentFloat": 5.1
-        }
+    if fake_mode:
+        last = round(random.uniform(100, 200), 2)
+        open_ = round(last * random.uniform(0.98, 1.02), 2)
+        prev = round(last * random.uniform(0.98, 1.02), 2)
+        gap = round(((open_ - prev) / prev) * 100, 2)
+        change = round(((last - prev) / prev) * 100, 2)
+        float_m = round(random.uniform(5, 300), 2)
+        avg_vol = round(random.uniform(1, 100), 2)
     else:
         quote = get_quote(symbol)
-        if quote.get("pc") == 0 or quote.get("c") is None:
+        if not quote or "pc" not in quote or quote["pc"] == 0:
             continue
-        metrics = get_metrics(symbol)
-
-    gap_pct = ((quote["o"] - quote["pc"]) / quote["pc"]) * 100
-    change_pct = ((quote["c"] - quote["pc"]) / quote["pc"]) * 100
-
-    float_shares = metrics.get("sharesFloat", 0)
-    avg_vol = metrics.get("10DayAverageTradingVolume", 0)
-    short_float = metrics.get("shortPercentFloat", 0)
+        last = quote.get("c", 0)
+        open_ = quote.get("o", 0)
+        prev = quote.get("pc", 0)
+        gap = round(((open_ - prev) / prev) * 100, 2)
+        change = round(((last - prev) / prev) * 100, 2)
+        float_m = round(get_float(symbol), 2)
+        avg_vol = round(get_volume(symbol) / 1_000_000, 2)
 
     data.append({
         "Symbol": symbol,
-        "Last Price": quote["c"],
-        "Open": quote["o"],
-        "Prev Close": quote["pc"],
-        "Gap %": round(gap_pct, 2),
-        "Change %": round(change_pct, 2),
-        "Float (M)": round(float_shares / 1e6, 2),
-        "Avg Vol (M)": round(avg_vol / 1e6, 2),
-        "Short Float %": round(short_float, 2)
+        "Last Price": last,
+        "Open": open_,
+        "Prev Close": prev,
+        "Gap %": gap,
+        "Change %": change,
+        "Float (M)": float_m,
+        "Avg Vol (M)": avg_vol
     })
 
-# ========== DISPLAY ==========
-if data:
-    df = pd.DataFrame(data)
-    df = df.sort_values(by="Gap %", ascending=False).reset_index(drop=True)
-    st.markdown(f"🕒 Last Updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} (auto-refresh every {REFRESH_INTERVAL}s)")
-    st.dataframe(df, use_container_width=True)
-else:
-    st.warning("⚠️ No data available. Check ticker symbols or wait for market hours.")
+# ================== DISPLAY ========================
+df = pd.DataFrame(data)
+df = df.sort_values(by="Gap %", ascending=False).reset_index(drop=True)
+st.dataframe(df, use_container_width=True)
 
-# ========== AUTO-REFRESH ==========
-countdown = st.empty()
-for i in range(REFRESH_INTERVAL, 0, -1):
-    countdown.markdown(f"🔁 Refreshing in **{i} seconds**...")
-    time.sleep(1)
-
-st.rerun()
+# ================== AUTO REFRESH =====================
+if not fake_mode:
+    st.experimental_rerun = st.experimental_rerun if hasattr(st, "experimental_rerun") else lambda: None
+    st.caption(f"🔁 Refreshing in {REFRESH_INTERVAL} seconds...")
+    time.sleep(REFRESH_INTERVAL)
+    st.experimental_rerun()
