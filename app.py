@@ -29,7 +29,8 @@ def get_fake_data():
             "Relative Vol (5 Min %)": round(random.uniform(1, 900_000), 2),
             "Change From Close (%)": round(random.uniform(1, 80), 2),
             "Short Interest": random.randint(0, 50_000_000),
-            "Short Ratio": round(random.uniform(0.1, 20), 2)
+            "Short Ratio": round(random.uniform(0.1, 20), 2),
+            "News": f"[{time.strftime('%H:%M')}] {symbol} reports strong earnings growth."
         }
         for symbol in SYMBOLS
     ]
@@ -39,7 +40,6 @@ def fetch_real_data(symbol):
     base_url = f"https://finnhub.io/api/v1/"
     try:
         quote = requests.get(f"{base_url}quote?symbol={symbol}&token={API_KEY}").json()
-        profile = requests.get(f"{base_url}stock/profile2?symbol={symbol}&token={API_KEY}").json()
         stats = requests.get(f"{base_url}stock/metric?symbol={symbol}&metric=all&token={API_KEY}").json()
 
         prev_close = quote.get("pc", 0)
@@ -59,7 +59,8 @@ def fetch_real_data(symbol):
             "Relative Vol (5 Min %)": round(stats.get("metric", {}).get("52WeekHigh", 0), 2),  # Placeholder
             "Change From Close (%)": round(change, 2),
             "Short Interest": int(stats.get("metric", {}).get("shortInterest", 0)),
-            "Short Ratio": round(stats.get("metric", {}).get("shortRatio", 0), 2)
+            "Short Ratio": round(stats.get("metric", {}).get("shortRatio", 0), 2),
+            "News": f"[{time.strftime('%H:%M')}] {symbol} sees strong premarket movement."  # Placeholder news
         }
     except:
         return None
