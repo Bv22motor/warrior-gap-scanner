@@ -1,59 +1,91 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
+import time
 
-# ========== CONFIG ==========
+# ======= FAKE TEST MODE =======
 st.set_page_config(page_title="Top Gappers Scanner", layout="wide")
+st.sidebar.markdown("🧪 **Enable Fake Test Mode**")
+use_fake = st.sidebar.toggle("Enable Fake Test Mode", value=False)
 
-# ========== TEST MODE ==========
-fake_mode = st.sidebar.toggle("🚀 Enable Fake Test Mode")
+# ======= SIMULATED DATA =======
+def get_fake_data():
+    return [
+        {
+            "Symbol": "ASTR", "Price": 2.5, "Volume": 8180000, "Float": 15.74,
+            "Relative Vol (Daily Rate)": 2876.08, "Relative Vol (5 Min %)": 500720.16,
+            "Change From Close (%)": 83.78, "Short Interest": 1830000, "Short Ratio": 3.48,
+            "Prev Close": 1.36
+        },
+        {
+            "Symbol": "CDNA", "Price": 70.68, "Volume": 2145000, "Float": 213.03,
+            "Relative Vol (Daily Rate)": 0.48, "Relative Vol (5 Min %)": 29.13,
+            "Change From Close (%)": 26.46, "Short Interest": 0, "Short Ratio": 0.0,
+            "Prev Close": 55.9
+        },
+        {
+            "Symbol": "QOCX", "Price": 1.36, "Volume": 10779000, "Float": 59.76,
+            "Relative Vol (Daily Rate)": 140.7, "Relative Vol (5 Min %)": 6215.56,
+            "Change From Close (%)": 14.51, "Short Interest": 1980000, "Short Ratio": 1.28,
+            "Prev Close": 1.19
+        },
+        {
+            "Symbol": "APP", "Price": 45.45, "Volume": 84550000, "Float": 183.98,
+            "Relative Vol (Daily Rate)": 20.28, "Relative Vol (5 Min %)": 1943.8,
+            "Change From Close (%)": 13.29, "Short Interest": 17480000, "Short Ratio": 8.97,
+            "Prev Close": 40.14
+        },
+        {
+            "Symbol": "AFRM", "Price": 24.65, "Volume": 56714000, "Float": 220.94,
+            "Relative Vol (Daily Rate)": 4.09, "Relative Vol (5 Min %)": 415.51,
+            "Change From Close (%)": 13.08, "Short Interest": 44590000, "Short Ratio": 3.52,
+            "Prev Close": 21.81
+        },
+        {
+            "Symbol": "RAMP", "Price": 33.91, "Volume": 5700000, "Float": 64.25,
+            "Relative Vol (Daily Rate)": 237.5, "Relative Vol (5 Min %)": 686666.67,
+            "Change From Close (%)": 12.37, "Short Interest": 1260000, "Short Ratio": 3.52,
+            "Prev Close": 30.17
+        },
+        {
+            "Symbol": "DUOL", "Price": 185.99, "Volume": 13670000, "Float": 37.39,
+            "Relative Vol (Daily Rate)": 14.93, "Relative Vol (5 Min %)": 3044.47,
+            "Change From Close (%)": 11.19, "Short Interest": 2360000, "Short Ratio": 4.11,
+            "Prev Close": 167.27
+        },
+    ]
 
-# ========== FAKE DATA (For Test Mode) ==========
-FAKE_DATA = [
-    {"symbol": "ASTR", "price": 2.5, "volume": 8180000, "float": 15.74, "rel_vol_daily": 2876.08,
-     "rel_vol_5min": 500720.16, "change": 83.78, "short_interest": 1830000, "short_ratio": 3.48, "short_float": 12.4, "prev_close": 1.36},
-    {"symbol": "CDNA", "price": 70.68, "volume": 2145000, "float": 213.03, "rel_vol_daily": 0.48,
-     "rel_vol_5min": 29.13, "change": 26.46, "short_interest": 0, "short_ratio": 0, "short_float": 3.2, "prev_close": 55.9},
-    {"symbol": "QOCX", "price": 1.36, "volume": 10779000, "float": 59.76, "rel_vol_daily": 140.7,
-     "rel_vol_5min": 6215.56, "change": 14.51, "short_interest": 1980000, "short_ratio": 1.28, "short_float": 8.9, "prev_close": 1.19},
-    {"symbol": "APP", "price": 45.45, "volume": 84550000, "float": 183.98, "rel_vol_daily": 20.28,
-     "rel_vol_5min": 1943.8, "change": 13.29, "short_interest": 17480000, "short_ratio": 8.97, "short_float": 5.1, "prev_close": 40.17},
-    {"symbol": "AFRM", "price": 24.65, "volume": 56714000, "float": 220.94, "rel_vol_daily": 4.09,
-     "rel_vol_5min": 415.51, "change": 13.08, "short_interest": 44590000, "short_ratio": 3.52, "short_float": 6.3, "prev_close": 21.8},
-    {"symbol": "RAMP", "price": 33.91, "volume": 5700000, "float": 64.25, "rel_vol_daily": 237.5,
-     "rel_vol_5min": 686666.67, "change": 12.37, "short_interest": 1260000, "short_ratio": 3.52, "short_float": 2.2, "prev_close": 30.2},
-    {"symbol": "DUOL", "price": 185.99, "volume": 13670000, "float": 37.39, "rel_vol_daily": 14.93,
-     "rel_vol_5min": 3044.47, "change": 11.19, "short_interest": 2360000, "short_ratio": 4.11, "short_float": 4.8, "prev_close": 167.3},
-]
-
-# ========== DATA FETCH ==========
-data = []
-if fake_mode:
-    for d in FAKE_DATA:
-        gap_pct = ((d["price"] - d["prev_close"]) / d["prev_close"]) * 100
-        data.append({
-            "Gap %": round(gap_pct, 2),
-            "Symbol": d["symbol"],
-            "Price": d["price"],
-            "Volume": d["volume"],
-            "Float (M)": d["float"],
-            "Relative Vol (Daily Rate)": d["rel_vol_daily"],
-            "Relative Vol (5 Min %)": d["rel_vol_5min"],
-            "Change From Close (%)": d["change"],
-            "Short Interest": d["short_interest"],
-            "Short Ratio": d["short_ratio"],
-            "Short Float %": d["short_float"]
-        })
-else:
-    st.warning("Live mode not connected. Please enable Fake Test Mode for now.")
-
-# ========== UI ==========
-st.markdown("""<h1 style='font-size: 40px;'>🚀 Warrior-Style Gap Scanner</h1>""", unsafe_allow_html=True)
-st.caption(f"Last Updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} (auto-refresh every 60s)")
+# ======= DATA HANDLING =======
+data = get_fake_data() if use_fake else []
 
 if data:
     df = pd.DataFrame(data)
+
+    # Calculate Gap %
+    df["Gap %"] = ((df["Price"] - df["Prev Close"]) / df["Prev Close"]) * 100
+    df["Gap %"] = df["Gap %"].round(2)
+
+    # Reorder columns so Gap % comes first
+    cols = ["Gap %"] + [col for col in df.columns if col != "Gap %"]
+    df = df[cols]
+
+    # Sort by Gap % descending
     df = df.sort_values(by="Gap %", ascending=False).reset_index(drop=True)
+
+    # Remove internal 'Prev Close' column if not needed in view
+    df.drop(columns=["Prev Close"], inplace=True)
+
+# ======= UI DISPLAY =======
+st.markdown("## 🚀 Warrior-Style Gap Scanner")
+st.markdown(f"⏰ Last Updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} (auto-refresh every 60s)")
+st.markdown("---")
+
+if data:
     st.dataframe(df, use_container_width=True)
 else:
-    st.info("No data available.")
+    st.warning("No data available. Please enable Fake Test Mode.")
+
+# ======= AUTO REFRESH =======
+st.experimental_rerun = lambda: None  # override to silence warnings
+time.sleep(60)
+st.experimental_rerun()
