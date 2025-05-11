@@ -4,22 +4,22 @@ import finnhub
 from datetime import datetime
 
 # === API Key ===
-api_key = "d0fhdbhr01qsv9ehhli0d0fhdbhr01qsv9ehhlig"  # 🔁 Replace this with your real API key
+api_key = "d0fhdbhr01qsv9ehhli0d0fhdbhr01qsv9ehhlig"  # ⛔ Replace this with your actual Finnhub API key
 finnhub_client = finnhub.Client(api_key=api_key)
 
-# === App Config ===
+# === Page Setup ===
 st.set_page_config(page_title="Warrior-Style Gap Scanner", layout="wide")
 st.title("🚀 Warrior-Style Gap Scanner")
 
-# === Session Toggle (Pre-market or Regular Market) ===
+# === Market Session Toggle ===
 session_type = st.selectbox("Market Session", ["Pre-market", "Regular Market"])
 
-# === Refresh Toggle ===
-refresh = st.checkbox("Refreshing in 60 seconds...", value=True)
-if refresh:
+# === Auto-refresh toggle ===
+auto_refresh = st.checkbox("Refreshing in 60 seconds...", value=True)
+if auto_refresh:
     st.experimental_rerun()
 
-# === Simulated Top Gapper Symbols (replace with real logic later) ===
+# === Symbol List (Temporary hardcoded, can upgrade later) ===
 symbols = ["APP", "CDNA", "RAMP", "DUOL", "ASTR", "QOCX", "AFRM"]
 
 # === Gap Data Function ===
@@ -35,23 +35,23 @@ def get_gap_data(symbols, session):
             current_price = quote["c"]
             previous_close = quote["pc"]
 
-            # Calculate Gap %
+            # Calculate gap % depending on session
             if session == "Pre-market":
-                gap_percent = quote["dp"]  # Finnhub gives premarket % if available
+                gap_percent = quote["dp"]  # Pre-market percentage change (if available)
             else:
-                gap_percent = ((current_price - previous_close) / previous_close) * 100 if previous_close else 0
+                gap_percent = ((current_price - previous_close) / previous_close * 100) if previous_close else 0
 
             data.append({
                 "Gap %": round(gap_percent, 2),
                 "Symbol": symbol,
                 "Price": round(current_price, 2),
-                "Volume": "--",
-                "Float (M)": "--",
-                "Relative Vol (Daily Rate)": "--",
-                "Relative Vol (5 Min %)": "--",
+                "Volume": "--",  # Placeholder for now
+                "Float (M)": "--",  # Placeholder for now
+                "Relative Vol (Daily Rate)": "--",  # Placeholder for now
+                "Relative Vol (5 Min %)": "--",  # Placeholder for now
                 "Change From Close (%)": round(gap_percent, 2),
-                "Short Interest": "--",
-                "Short Ratio": "--",
+                "Short Interest": "--",  # Placeholder
+                "Short Ratio": "--",  # Placeholder
                 "News": latest_news
             })
 
@@ -72,7 +72,7 @@ def get_gap_data(symbols, session):
 
     return pd.DataFrame(data)
 
-# === Display Data ===
+# === Display Table ===
 df = get_gap_data(symbols, session_type)
 st.markdown(f"**Last Updated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} (auto-refresh every 60s)")
 st.dataframe(df, use_container_width=True)
