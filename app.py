@@ -2,53 +2,50 @@ import streamlit as st
 import pandas as pd
 import finnhub
 from datetime import datetime
-import time
 
-# === Finnhub API Setup ===
-api_key = "d0fhdbhr01qsv9ehhli0d0fhdbhr01qsv9ehhlig"
+# === API Key ===
+api_key = "d0fhdbhr01qsv9ehhli0d0fhdbhr01qsv9ehhlig"  # 🔁 Replace this with your real API key
 finnhub_client = finnhub.Client(api_key=api_key)
 
-# === App UI ===
+# === App Config ===
 st.set_page_config(page_title="Warrior-Style Gap Scanner", layout="wide")
 st.title("🚀 Warrior-Style Gap Scanner")
 
-# Session Toggle
-session = st.selectbox("Market Session", ["Pre-market", "Regular Market"])
+# === Session Toggle (Pre-market or Regular Market) ===
+session_type = st.selectbox("Market Session", ["Pre-market", "Regular Market"])
 
-# Refresh toggle
-refresh_rate = 60
-refresh_enabled = st.checkbox("Refreshing in 60 seconds...", value=True)
-if refresh_enabled:
+# === Refresh Toggle ===
+refresh = st.checkbox("Refreshing in 60 seconds...", value=True)
+if refresh:
     st.experimental_rerun()
 
-# Symbol List (replace with your screener logic or top gappers)
+# === Simulated Top Gapper Symbols (replace with real logic later) ===
 symbols = ["APP", "CDNA", "RAMP", "DUOL", "ASTR", "QOCX", "AFRM"]
 
-# === Data Fetching Function ===
-def get_gap_data(symbols, session_type):
-    rows = []
+# === Gap Data Function ===
+def get_gap_data(symbols, session):
+    data = []
 
-    for sym in symbols:
+    for symbol in symbols:
         try:
-            quote = finnhub_client.quote(sym)
-            news = finnhub_client.company_news(sym, _from="2025-05-10", to="2025-05-11")
+            quote = finnhub_client.quote(symbol)
+            news = finnhub_client.company_news(symbol, _from="2025-05-10", to="2025-05-11")
             latest_news = news[0]["headline"] if news else "No recent news"
 
             current_price = quote["c"]
             previous_close = quote["pc"]
-            premarket_price = quote["dp"]  # Optional, if available from another source
 
             # Calculate Gap %
-            if session_type == "Pre-market":
-                gap_percent = quote["dp"]  # Use premarket % if available
+            if session == "Pre-market":
+                gap_percent = quote["dp"]  # Finnhub gives premarket % if available
             else:
                 gap_percent = ((current_price - previous_close) / previous_close) * 100 if previous_close else 0
 
-            rows.append({
+            data.append({
                 "Gap %": round(gap_percent, 2),
-                "Symbol": sym,
+                "Symbol": symbol,
                 "Price": round(current_price, 2),
-                "Volume": "--",  # Add later if needed
+                "Volume": "--",
                 "Float (M)": "--",
                 "Relative Vol (Daily Rate)": "--",
                 "Relative Vol (5 Min %)": "--",
@@ -57,11 +54,25 @@ def get_gap_data(symbols, session_type):
                 "Short Ratio": "--",
                 "News": latest_news
             })
-        except Exception as e:
-            print(f"Error fetching for {sym}: {e}")
-    return pd.DataFrame(rows)
 
-# === Display Table ===
-data = get_gap_data(symbols, session)
+        except Exception as e:
+            data.append({
+                "Gap %": "--",
+                "Symbol": symbol,
+                "Price": "--",
+                "Volume": "--",
+                "Float (M)": "--",
+                "Relative Vol (Daily Rate)": "--",
+                "Relative Vol (5 Min %)": "--",
+                "Change From Close (%)": "--",
+                "Short Interest": "--",
+                "Short Ratio": "--",
+                "News": f"Error: {str(e)}"
+            })
+
+    return pd.DataFrame(data)
+
+# === Display Data ===
+df = get_gap_data(symbols, session_type)
 st.markdown(f"**Last Updated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} (auto-refresh every 60s)")
-st.dataframe(data, use_container_width=True)
+st.dataframe(df, use_container_width=True)
