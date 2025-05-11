@@ -1,78 +1,104 @@
 import streamlit as st
+import requests
 import pandas as pd
-import finnhub
-from datetime import datetime
+import time
+import random
+import os
 
-# === Finnhub API Setup ===
-api_key = "d0fhdbhr01qsv9ehhli0d0fhdbhr01qsv9ehhlig"  # 🔁 Replace this with your actual Finnhub API key
-finnhub_client = finnhub.Client(api_key=api_key)
+# ======== CONFIG =========
+API_KEY = os.getenv("FINNHUB_API_KEY") or "d0fhdbhr01qsv9ehhli0d0fhdbhr01qsv9ehhlig"
+SYMBOLS = ["ASTR", "CDNA", "QOCX", "APP", "AFRM", "RAMP", "DUOL"]
 
-# === Streamlit Page Config ===
-st.set_page_config(page_title="Warrior-Style Gap Scanner", layout="wide")
+st.set_page_config(page_title="Gap Scanner", layout="wide")
 st.title("🚀 Warrior-Style Gap Scanner")
 
-# === Session Toggle (Pre-market / Regular Market) ===
-session_type = st.selectbox("Market Session", ["Pre-market", "Regular Market"])
+# ======== OPTIONS =========
+use_fake = st.sidebar.toggle("✨ Enable Fake Test Mode", value=False)
+auto_refresh = st.sidebar.checkbox("🔁 Refreshing in 60 seconds...", value=True)
 
-# === Auto-refresh toggle ===
-refresh = st.checkbox("Refreshing in 60 seconds...", value=True)
-if refresh:
-    st.experimental_rerun()
+# ======== UTILS =========
+def null_guard(val, is_float=False):
+    return round(val, 2) if isinstance(val, (int, float)) and val != 0 else "--" if is_float else "--"
 
-# === Simulated Symbol List (Can be replaced with live data feed)
-symbols = ["APP", "CDNA", "RAMP", "DUOL", "ASTR", "QOCX", "AFRM"]
+def format_news_tooltip(news):
+    if not news:
+        return "--"
+    short = news[:57] + "..." if len(news) > 60 else news
+    return f'<span title="{news}">{short}</span>'
 
-# === Gap Scanner Logic ===
-def get_gap_data(symbols, session_type):
-    data = []
+# ======== MOCK TEST DATA =========
+def get_fake_data():
+    return [
+        {
+            "Gap %": round(random.uniform(10, 90), 2),
+            "Symbol": symbol,
+            "Price": round(random.uniform(1, 300), 2),
+            "Volume": random.randint(1_000_000, 90_000_000),
+            "Float (M)": round(random.uniform(10, 300), 2),
+            "Relative Vol (Daily Rate)": round(random.uniform(1, 3000), 2),
+            "Relative Vol (5 Min %)": round(random.uniform(1, 900_000), 2),
+            "Change From Close (%)": round(random.uniform(-20, 20), 2),
+            "Short Interest": random.randint(0, 50_000_000),
+            "Short Ratio": round(random.uniform(0.1, 20), 2),
+            "News": f"[{time.strftime('%H:%M')}] {symbol} reports strong earnings growth."
+        }
+        for symbol in SYMBOLS
+    ]
 
-    for symbol in symbols:
-        try:
-            quote = finnhub_client.quote(symbol)
-            news = finnhub_client.company_news(symbol, _from="2025-05-10", to="2025-05-11")
-            latest_news = news[0]["headline"] if news else "No recent news"
+# ======== REAL DATA FETCHER =========
+def fetch_real_data(symbol):
+    base_url = "https://finnhub.io/api/v1/"
+    try:
+        quote = requests.get(f"{base_url}quote?symbol={symbol}&token={API_KEY}").json()
+        stats = requests.get(f"{base_url}stock/metric?symbol={symbol}&metric=all&token={API_KEY}").json()
+        news = requests.get(f"{base_url}company-news?symbol={symbol}&from=2024-01-01&to=2025-12-31&token={API_KEY}").json()
 
-            current_price = quote.get("c", 0)
-            previous_close = quote.get("pc", 0)
+        prev_close = quote.get("pc", 0)
+        open_price = quote.get("o", 0)
+        current = quote.get("c", 0)
+        gap = ((open_price - prev_close) / prev_close * 100) if prev_close else 0
+        change = ((current - prev_close) / prev_close * 100) if prev_close else 0
 
-            # Calculate Gap %
-            if session_type == "Pre-market":
-                gap_percent = quote.get("dp", 0)  # Use premarket % if available
-            else:
-                gap_percent = ((current_price - previous_close) / previous_close * 100) if previous_close else 0
+        # Get latest headline
+        if news and isinstance(news, list) and len(news) > 0:
+            headline = news[0].get("headline", "")
+            ts = news[0].get("datetime", 0)
+            news_time = time.strftime('%H:%M', time.localtime(ts))
+            news_text = f"[{news_time}] {headline}"
+        else:
+            news_text = "No recent news"
 
-            data.append({
-                "Gap %": round(gap_percent, 2),
-                "Symbol": symbol,
-                "Price": round(current_price, 2),
-                "Volume": "--",  # Placeholder
-                "Float (M)": "--",  # Placeholder
-                "Relative Vol (Daily Rate)": "--",  # Placeholder
-                "Relative Vol (5 Min %)": "--",  # Placeholder
-                "Change From Close (%)": round(gap_percent, 2),
-                "Short Interest": "--",  # Placeholder
-                "Short Ratio": "--",  # Placeholder
-                "News": latest_news
-            })
+        return {
+            "Gap %": round(gap, 2),
+            "Symbol": symbol,
+            "Price": null_guard(current, True),
+            "Volume": null_guard(stats.get("metric", {}).get("volume")),
+            "Float (M)": null_guard(stats.get("metric", {}).get("sharesFloat") / 1_000_000 if stats.get("metric", {}).get("sharesFloat") else 0, True),
+            "Relative Vol (Daily Rate)": null_guard(stats.get("metric", {}).get("10DayAverageTradingVolume")),
+            "Relative Vol (5 Min %)": null_guard(stats.get("metric", {}).get("52WeekHigh")),  # Placeholder
+            "Change From Close (%)": round(change, 2),
+            "Short Interest": null_guard(stats.get("metric", {}).get("shortInterest")),
+            "Short Ratio": null_guard(stats.get("metric", {}).get("shortRatio"), True),
+            "News": format_news_tooltip(news_text)
+        }
+    except Exception as e:
+        return None
 
-        except Exception as e:
-            data.append({
-                "Gap %": "--",
-                "Symbol": symbol,
-                "Price": "--",
-                "Volume": "--",
-                "Float (M)": "--",
-                "Relative Vol (Daily Rate)": "--",
-                "Relative Vol (5 Min %)": "--",
-                "Change From Close (%)": "--",
-                "Short Interest": "--",
-                "Short Ratio": "--",
-                "News": f"Error: {str(e)}"
-            })
+# ======== GET DATA =========
+data = get_fake_data() if use_fake else list(filter(None, [fetch_real_data(s) for s in SYMBOLS]))
 
-    return pd.DataFrame(data)
+# ======== DISPLAY =========
+if data:
+    df = pd.DataFrame(data)
+    df = df.sort_values(by="Gap %", ascending=False).reset_index(drop=True)
 
-# === Display Table ===
-df = get_gap_data(symbols, session_type)
-st.markdown(f"**Last Updated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} (auto-refresh every 60s)")
-st.dataframe(df, use_container_width=True)
+    st.markdown(f"🕒 Last Updated: {time.strftime('%Y-%m-%d %H:%M:%S')} (auto-refresh every 60s)")
+    st.markdown("<style>table td span {cursor: help;}</style>", unsafe_allow_html=True)
+    st.write(df.to_html(escape=False, index=False), unsafe_allow_html=True)
+else:
+    st.warning("No data to show. Check tickers or API usage.")
+
+# ======== AUTO REFRESH =========
+if auto_refresh:
+    time.sleep(60)
+    st.rerun()
