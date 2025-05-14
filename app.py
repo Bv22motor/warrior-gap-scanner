@@ -5,25 +5,25 @@ import os
 from datetime import datetime
 from dotenv import load_dotenv
 
+# === Load API Key from .env ===
 load_dotenv()
-
-# === SETTINGS ===
 API_KEY = os.getenv("d0fhdbhr01qsv9ehhli0d0fhdbhr01qsv9ehhlig")
 REFRESH_INTERVAL = 60  # seconds
 
-# === FAKE TEST MODE ===
+# === Sidebar toggle ===
 st.sidebar.toggle("Enable Fake Test Mode", key="fake_mode", value=False)
 fake_mode = st.session_state.fake_mode
 
-# === HEADER ===
+# === Header ===
 st.title("🚀 Warrior-Style Gap Scanner")
 st.caption(f"📅 Last Updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} (auto-refresh every {REFRESH_INTERVAL}s)")
 
-# === FUNCTIONS ===
+# === Functions ===
 def get_gappers():
     if fake_mode:
-        return pd.read_csv("mock_data.csv")  # You can prepare a CSV for offline testing
+        return pd.read_csv("mock_data.csv")  # Optional CSV for offline testing
 
+    # Get US symbols
     url = f"https://finnhub.io/api/v1/stock/symbol?exchange=US&token={API_KEY}"
     response = requests.get(url)
     if response.status_code != 200:
@@ -35,10 +35,9 @@ def get_gappers():
 
     data = []
 
-    for symbol in tickers[:50]:  # Limit to first 50 for speed
+    for symbol in tickers[:50]:  # limit for testing
         try:
             quote = requests.get(f"https://finnhub.io/api/v1/quote?symbol={symbol}&token={API_KEY}").json()
-            profile = requests.get(f"https://finnhub.io/api/v1/stock/profile2?symbol={symbol}&token={API_KEY}").json()
             stats = requests.get(f"https://finnhub.io/api/v1/stock/metric?symbol={symbol}&metric=all&token={API_KEY}").json()
             news = requests.get(f"https://finnhub.io/api/v1/company-news?symbol={symbol}&from={datetime.now().strftime('%Y-%m-%d')}&to={datetime.now().strftime('%Y-%m-%d')}&token={API_KEY}").json()
 
@@ -70,11 +69,10 @@ def get_gappers():
     df = df.sort_values(by="Gap %", ascending=False)
     return df
 
-
-# === MAIN TABLE ===
+# === Main Display ===
 with st.spinner("Fetching data..."):
     df = get_gappers()
     st.dataframe(df, use_container_width=True)
 
-# === AUTO REFRESH ===
+# === Auto refresh ===
 st.experimental_rerun()
