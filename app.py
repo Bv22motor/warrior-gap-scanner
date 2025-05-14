@@ -75,4 +75,4 @@ with st.spinner("Fetching data..."):
     st.dataframe(df, use_container_width=True)
 
 # === Auto refresh ===
-st.experimental_rerun()
+
