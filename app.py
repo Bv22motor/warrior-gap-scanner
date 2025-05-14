@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 # === Load API Key from .env ===
 load_dotenv()
-API_KEY = os.getenv("d0fhdbhr01qsv9ehhli0d0fhdbhr01qsv9ehhlig")
+API_KEY = "d0fhdbhr01qsv9ehhli0d0fhdbhr01qsv9ehhlig"  # Manual fallback
 REFRESH_INTERVAL = 60  # seconds
 
 # === Sidebar toggle ===
